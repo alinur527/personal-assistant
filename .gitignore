@@ -45,6 +45,11 @@ apps/*/.gradle/
 # Secrets
 secrets/
 !secrets/.gitignore
+token.json
+client_secret*.json
+credentials*.json
+*.pem
+*.key
 
 # Vitest
 .vitest-cache/

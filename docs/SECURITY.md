@@ -58,6 +58,15 @@ Browser apps may use public URLs and public client identifiers only. They must n
   email, but must never include `access_token` or `refresh_token`.
 - Legacy plaintext OAuth token rows must be rotated/reconnected; new writes
   are blocked by app-side encryption and database `enc:v1:` constraints.
+- `workers/google-sync` is a trusted service-role process. It reads connected
+  rows only, decrypts them with the same key and AAD context as `packages/db`,
+  and persists refreshed token ciphertext to the same user/provider row. It
+  rejects plaintext or malformed values in every environment; there is no
+  worker plaintext fallback.
+- Worker logs and its `status` command must not contain OAuth tokens or Google
+  account email addresses. The worker host needs the Google OAuth client secret,
+  Supabase service-role key, and OAuth encryption key; restrict its `.env` file
+  to the service account and do not deploy it to a browser/runtime image.
 
 ## Health Ingest
 
@@ -91,10 +100,10 @@ Browser apps may use public URLs and public client identifiers only. They must n
   `LIFEOS_ENABLE_LEGACY_SINGLE_USER_OBSIDIAN=false` in multi-user production.
 - Enable a legacy flag only for local/dev or an explicitly accepted single-user
   deployment.
-- Do not describe the Google sync worker, ICS, or standalone monthly review
-  integrations as multi-user-safe until they use per-user source ownership and
-  output routing. Google OAuth management is per-user, but
-  `workers/google-sync` remains guarded legacy until its next migration.
+- Do not describe ICS or standalone monthly review integrations as multi-user-
+  safe until they use per-user source ownership and output routing. Google sync
+  is multi-user-safe only when its default legacy flag remains false and it uses
+  `user_oauth_connections`, not `GOOGLE_TOKEN_FILE`.
 - Obsidian mirror is multi-user-safe only when using `user_obsidian_settings`,
   not the legacy global vault fallback.
 

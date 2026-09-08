@@ -53,13 +53,21 @@ The stabilized vertical slice keeps Supabase Auth as the identity root:
 
 For local single-user setup, `LIFEOS_DEFAULT_USER_ID` and `LIFEOS_DEFAULT_TELEGRAM_USER_ID` let `/start` link the configured Telegram account when the auth user exists.
 
-Current multi-user MVP caveat: Telegram bot/TMA access, health ingest, reminder delivery, Obsidian mirror routing, and Google OAuth management are user-scoped. The remaining local worker integrations are guarded legacy single-user modes and are not production multi-user until their runtime sync loops consume per-user configuration:
+Google Calendar and Tasks are also user-scoped end-to-end: the Google worker
+iterates connected `user_oauth_connections`, refreshes each user's encrypted
+credentials, then writes `external_sources`, `sync_runs`, `source_events`, and
+reminders using that connection's `user_id`. It runs as a trusted local worker
+with the Supabase service role and the OAuth encryption key; it does not run in
+the browser or expose tokens through the bot API.
 
-- `workers/google-sync` still uses one local `GOOGLE_TOKEN_FILE` and `LIFEOS_DEFAULT_USER_ID`. It ignores `user_oauth_connections` until the next worker migration and requires `LIFEOS_ENABLE_LEGACY_SINGLE_USER_GOOGLE_SYNC=true`.
+The remaining local worker integrations are guarded legacy single-user modes and
+are not production multi-user until their runtime sync loops consume per-user
+configuration:
+
 - `workers/ics-sync` assigns configured feed URLs to `LIFEOS_DEFAULT_USER_ID`. It requires `LIFEOS_ENABLE_LEGACY_SINGLE_USER_ICS_SYNC=true`.
 - `workers/monthly-review-worker` uses `LIFEOS_DEFAULT_USER_ID`, optional `LIFEOS_DEFAULT_TELEGRAM_USER_ID`, and one vault path. It requires `LIFEOS_ENABLE_LEGACY_SINGLE_USER_MONTHLY_REVIEW=true`.
 
-Do not present the Google sync worker, ICS, or standalone monthly-review integrations as fully multi-user-safe until per-user source configuration is consumed by those workers. Google OAuth status is connected only for users with `user_oauth_connections.provider = 'google'` and `status = 'connected'`. Obsidian mirror is connected only for users with `user_obsidian_settings.enabled = true`, `status = 'connected'`, and a local vault path.
+Do not present ICS or standalone monthly-review integrations as fully multi-user-safe until per-user source configuration is consumed by those workers. Google OAuth status is connected only for users with `user_oauth_connections.provider = 'google'` and `status = 'connected'`. Obsidian mirror is connected only for users with `user_obsidian_settings.enabled = true`, `status = 'connected'`, and a local vault path.
 
 ## Deployment Targets
 

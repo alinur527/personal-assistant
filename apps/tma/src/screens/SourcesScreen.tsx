@@ -34,14 +34,14 @@ const SOURCE_CATALOG: Array<{
     sourceKey: "google_calendar",
     displayName: "Google Calendar",
     sourceType: "google",
-    note: "Read-only local OAuth worker.",
+    note: "Read-only per-user Google OAuth sync.",
     implemented: true,
   },
   {
     sourceKey: "google_tasks",
     displayName: "Google Tasks",
     sourceType: "google",
-    note: "Read-only local OAuth worker.",
+    note: "Read-only per-user Google OAuth sync.",
     implemented: true,
   },
   {

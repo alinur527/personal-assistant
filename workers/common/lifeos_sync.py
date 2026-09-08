@@ -149,6 +149,7 @@ def load_base_settings(
     env_file: Path | None = None,
     legacy_guard_env: str | None = None,
     worker_name: str = "sync worker",
+    require_user_id: bool = True,
 ) -> BaseSettings:
     if env_file:
         load_dotenv(env_file)
@@ -157,7 +158,9 @@ def load_base_settings(
     return BaseSettings(
         supabase_url=getenv_required("SUPABASE_URL").rstrip("/"),
         service_role_key=getenv_required("SUPABASE_SERVICE_ROLE_KEY"),
-        user_id=getenv_required("LIFEOS_DEFAULT_USER_ID"),
+        user_id=(
+            getenv_required("LIFEOS_DEFAULT_USER_ID") if require_user_id else ""
+        ),
         timezone_name=os.environ.get("APP_TIMEZONE", "Asia/Qyzylorda").strip()
         or "Asia/Qyzylorda",
     )
@@ -426,6 +429,17 @@ class SupabaseRestClient:
             "return=representation",
         )
         return str(rows[0]["id"])
+
+    def set_source_status(self, source_key: str, status: str) -> None:
+        self.request(
+            "PATCH",
+            "external_sources",
+            {
+                "user_id": f"eq.{self.settings.user_id}",
+                "source_key": f"eq.{source_key}",
+            },
+            {"status": status},
+        )
 
     def finish_sync_run(
         self, run_id: str, status: str, stats: SyncStats, error: str | None = None

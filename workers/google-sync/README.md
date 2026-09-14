@@ -46,3 +46,9 @@ Variables tab. Never add secrets to the repository.
 
 See [`docs/GOOGLE_SYNC.md`](../../docs/GOOGLE_SYNC.md) for operations,
 verification, and the local-dev-only legacy OAuth option.
+
+## Railway deployment checkpoint
+
+- **Root Directory:** `/workers`
+- **Start Command:** `python google-sync/google_sync.py sync-once`
+- **Dependencies:** `workers/requirements.txt` (self-contained, no `-r` references)

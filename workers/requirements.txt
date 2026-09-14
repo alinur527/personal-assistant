@@ -1,1 +1,28 @@
--r google-sync/requirements.txt
+# Google OAuth and Tasks libraries
+google-api-python-client==2.220.0
+google-auth==2.40.0
+google-auth-httplib2==0.2.0
+google-auth-oauthlib==1.2.0
+
+# Encryption (Google OAuth token encrypt/decrypt)
+cryptography>=42.0.0
+
+# Requests and HTTP utilities
+requests==2.32.5
+httpx==0.26.0
+
+# Environment variable management
+python-dotenv==1.0.1
+
+# Date/time utilities
+python-dateutil==2.9.0.post0
+
+# Supabase client (for Python SDK)
+supabase==1.5.0
+
+# Logging and utilities
+rich==14.2.0
+
+# For Railway platform (workers/ directory is root)
+# All dependencies are listed here so Railpack can install them
+# without needing to resolve sub-directory requirements files.

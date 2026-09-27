@@ -1621,6 +1621,24 @@ export interface Database {
           updated_at?: string;
         }
       >;
+      schedule_deliveries: TableDefinition<
+        {
+          user_id: string;
+          send_on: string;
+          status: "attempted" | "sent" | "failed";
+          attempted_at: string;
+          claim_token: string | null;
+          sent_at: string | null;
+        },
+        {
+          user_id: string;
+          send_on: string;
+          status?: "attempted" | "sent" | "failed";
+          attempted_at?: string;
+          claim_token?: string | null;
+          sent_at?: string | null;
+        }
+      >;
       academic_records: TableDefinition<
         {
           id: string;
@@ -1844,6 +1862,14 @@ export interface Database {
       };
     };
     Functions: {
+      claim_schedule_delivery: {
+        Args: {
+          p_user_id: string;
+          p_send_on: string;
+          p_claim_token: string;
+        };
+        Returns: "claimed" | "sent" | "busy";
+      };
       purge_expired_google_oauth_state_nonces: {
         Args: Record<string, never>;
         Returns: number;

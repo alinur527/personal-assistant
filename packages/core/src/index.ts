@@ -8,4 +8,5 @@ export * from "./modes.js";
 export * from "./monthly-review.js";
 export * from "./parsers.js";
 export * from "./source-events.js";
+export * from "./schedule/index.js";
 export * from "./types.js";

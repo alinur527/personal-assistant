@@ -28,6 +28,8 @@ Current migration set:
 
 ## Kernel Tables
 
+`schedule_deliveries` records one automatic timetable send per LifeOS user and local send date. Its `(user_id, send_on)` primary key and `claim_schedule_delivery` RPC serialize competing senders. Apply `20260928000100_schedule_deliveries.sql` and `20260928000200_schedule_delivery_retry.sql` before enabling `SCHEDULE_ENABLED`. A claimed row is `attempted`; confirmed Telegram success moves it to `sent`, while a send error moves it to retryable `failed`. A ten-minute lease recovers attempts left unfinished by a process crash. `claim_token` prevents an older worker from overwriting a newer claim's status.
+
 - `profiles`
 - `daily_logs`
 - `tasks`

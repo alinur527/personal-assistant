@@ -1,4 +1,5 @@
 import { integerEnv, optionalEnv, type EnvSource } from "@lifeos/core";
+import { DateTime } from "luxon";
 
 export interface BotConfig {
   nodeEnv: string;
@@ -30,6 +31,12 @@ export interface BotConfig {
   syncthingApiUrl?: string;
   syncthingApiKey?: string;
   syncthingServerDeviceId?: string;
+  scheduleEnabled: boolean;
+  scheduleSendTime: string;
+  scheduleTimezone: string;
+  scheduleGroup: string;
+  scheduleSubgroup: "A";
+  scheduleOwnerTelegramId?: number;
 }
 
 export function telegramIdListEnv(source: EnvSource, name: string): number[] {
@@ -93,6 +100,49 @@ export function loadBotConfig(source: EnvSource = process.env): BotConfig {
     );
   }
 
+  const scheduleSendTime =
+    optionalEnv(source, "SCHEDULE_SEND_TIME", "20:00") ?? "20:00";
+  if (!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(scheduleSendTime)) {
+    throw new Error("SCHEDULE_SEND_TIME must be HH:mm (24-hour time)");
+  }
+  const scheduleTimezone =
+    optionalEnv(source, "SCHEDULE_TIMEZONE", "Asia/Almaty") ?? "Asia/Almaty";
+  if (!DateTime.now().setZone(scheduleTimezone).isValid) {
+    throw new Error("SCHEDULE_TIMEZONE must be a valid IANA timezone");
+  }
+  const scheduleGroup =
+    optionalEnv(source, "SCHEDULE_GROUP", "25-04") ?? "25-04";
+  if (scheduleGroup !== "25-04") {
+    throw new Error(
+      "Static schedule currently supports only SCHEDULE_GROUP=25-04",
+    );
+  }
+  const scheduleSubgroup = optionalEnv(source, "SCHEDULE_SUBGROUP", "A") ?? "A";
+  if (scheduleSubgroup !== "A") {
+    throw new Error(
+      "Static schedule currently supports only SCHEDULE_SUBGROUP=A",
+    );
+  }
+  const adminTelegramIds = telegramIdListEnv(
+    source,
+    "LIFEOS_ADMIN_TELEGRAM_IDS",
+  );
+  const defaultTelegramUserId = optionalEnv(
+    source,
+    "LIFEOS_DEFAULT_TELEGRAM_USER_ID",
+  )
+    ? integerEnv(source, "LIFEOS_DEFAULT_TELEGRAM_USER_ID", 0)
+    : undefined;
+  const ownerIdRaw = optionalEnv(source, "OWNER_TELEGRAM_ID");
+  const explicitOwnerId =
+    ownerIdRaw === undefined ? undefined : Number(ownerIdRaw);
+  if (
+    explicitOwnerId !== undefined &&
+    (!Number.isSafeInteger(explicitOwnerId) || explicitOwnerId <= 0)
+  ) {
+    throw new Error("OWNER_TELEGRAM_ID must be a positive Telegram id");
+  }
+
   return {
     nodeEnv,
     host: optionalEnv(source, "HOST", "0.0.0.0") ?? "0.0.0.0",
@@ -115,16 +165,8 @@ export function loadBotConfig(source: EnvSource = process.env): BotConfig {
     ),
     allowLegacyHealthIngestSecret: false,
     lifeosDefaultUserId: optionalEnv(source, "LIFEOS_DEFAULT_USER_ID"),
-    lifeosDefaultTelegramUserId: optionalEnv(
-      source,
-      "LIFEOS_DEFAULT_TELEGRAM_USER_ID",
-    )
-      ? integerEnv(source, "LIFEOS_DEFAULT_TELEGRAM_USER_ID", 0)
-      : undefined,
-    lifeosAdminTelegramIds: telegramIdListEnv(
-      source,
-      "LIFEOS_ADMIN_TELEGRAM_IDS",
-    ),
+    lifeosDefaultTelegramUserId: defaultTelegramUserId,
+    lifeosAdminTelegramIds: adminTelegramIds,
     lifeosSignupMode: signupModeEnv(source),
     allowUnsafeTmaDevAuth,
     openRouterApiKey: optionalEnv(source, "OPENROUTER_API_KEY"),
@@ -137,5 +179,14 @@ export function loadBotConfig(source: EnvSource = process.env): BotConfig {
     syncthingApiUrl: optionalEnv(source, "SYNCTHING_API_URL"),
     syncthingApiKey: optionalEnv(source, "SYNCTHING_API_KEY"),
     syncthingServerDeviceId: optionalEnv(source, "SYNCTHING_SERVER_DEVICE_ID"),
+    scheduleEnabled: booleanEnv(source, "SCHEDULE_ENABLED", false),
+    scheduleSendTime,
+    scheduleTimezone,
+    scheduleGroup,
+    scheduleSubgroup,
+    scheduleOwnerTelegramId:
+      explicitOwnerId ??
+      defaultTelegramUserId ??
+      (adminTelegramIds.length === 1 ? adminTelegramIds[0] : undefined),
   };
 }

@@ -28,6 +28,7 @@ import {
   type CurrencyCode,
 } from "@lifeos/core";
 import type { LifeOSStore, TelegramUserRecord } from "@lifeos/db";
+import type { ScheduleService } from "@lifeos/core";
 import type { BotConfig } from "./config.js";
 import { handleTelegramUpdate } from "./telegram/commands.js";
 import type { TelegramClient, TelegramUpdate } from "./telegram/types.js";
@@ -110,10 +111,13 @@ export interface BotServerOptions {
       | "syncthingApiUrl"
       | "syncthingApiKey"
       | "syncthingServerDeviceId"
+      | "scheduleTimezone"
+      | "scheduleOwnerTelegramId"
     >
   >;
   store?: LifeOSStore;
   telegram?: TelegramClient;
+  schedule?: ScheduleService;
   dependencies?: {
     supabaseConfigured?: boolean;
     telegramConfigured?: boolean;
@@ -162,6 +166,9 @@ interface ResolvedBotServerOptions {
   googleOAuthStateSecret?: string;
   store?: LifeOSStore;
   telegram?: TelegramClient;
+  schedule?: ScheduleService;
+  scheduleTimezone: string;
+  scheduleOwnerTelegramId?: number;
 }
 
 type TelegramUpdateType =
@@ -1518,6 +1525,9 @@ async function handleTelegramWebhook(
         openRouterApiKey: options.openRouterApiKey,
         model: options.financeAiModel,
       },
+      schedule: options.schedule,
+      scheduleTimezone: options.scheduleTimezone,
+      scheduleOwnerTelegramId: options.scheduleOwnerTelegramId,
     });
 
     telegramOk(response);
@@ -3518,6 +3528,9 @@ export function createBotServer(options: BotServerOptions = {}): Server {
     googleOAuthStateSecret: options.config?.googleOAuthStateSecret,
     store: options.store,
     telegram: options.telegram,
+    schedule: options.schedule,
+    scheduleTimezone: options.config?.scheduleTimezone ?? "Asia/Almaty",
+    scheduleOwnerTelegramId: options.config?.scheduleOwnerTelegramId,
   };
 
   return createServer((request: IncomingMessage, response: ServerResponse) => {

@@ -2,16 +2,25 @@ import { loadBotConfig } from "./config.js";
 import { createBotDependencies } from "./dependencies.js";
 import { createBotServer } from "./server.js";
 import { TelegramHttpClient } from "./telegram/client.js";
+import { ScheduleService, StaticScheduleProvider } from "@lifeos/core";
+import { SupabaseScheduleDeliveryStore } from "@lifeos/db";
+import { startDailySchedule } from "./schedule/daily.js";
 
 const config = loadBotConfig();
 const dependencies = createBotDependencies();
 const telegram = config.telegramBotToken
   ? new TelegramHttpClient(config.telegramBotToken)
   : undefined;
+const schedule = new ScheduleService(
+  new StaticScheduleProvider(),
+  config.scheduleGroup,
+  config.scheduleSubgroup,
+);
 const server = createBotServer({
   config,
   store: dependencies.store,
   telegram,
+  schedule,
   dependencies: {
     supabaseConfigured: Boolean(dependencies.supabase),
     telegramConfigured: Boolean(telegram),
@@ -22,6 +31,35 @@ server.listen(config.port, config.host, () => {
   console.info(
     `lifeos bot backend listening on http://${config.host}:${config.port}`,
   );
+
+  if (config.scheduleEnabled) {
+    if (
+      !telegram ||
+      !dependencies.store ||
+      !dependencies.supabase ||
+      !process.env.SUPABASE_SERVICE_ROLE_KEY ||
+      !config.scheduleOwnerTelegramId
+    ) {
+      console.error(
+        "[schedule] SCHEDULE_ENABLED requires Telegram, Supabase service role, and an owner Telegram ID",
+      );
+      server.close();
+      process.exitCode = 1;
+      return;
+    }
+    startDailySchedule({
+      sendTime: config.scheduleSendTime,
+      timezone: config.scheduleTimezone,
+      ownerTelegramId: config.scheduleOwnerTelegramId,
+      schedule,
+      store: dependencies.store,
+      deliveries: new SupabaseScheduleDeliveryStore(dependencies.supabase),
+      telegram,
+    });
+    console.info(
+      `[schedule] daily delivery enabled at ${config.scheduleSendTime} ${config.scheduleTimezone}`,
+    );
+  }
 
   if (dependencies.store?.syncFinanceExchangeRates) {
     const syncRates = () => {

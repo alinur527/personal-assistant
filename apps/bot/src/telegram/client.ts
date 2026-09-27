@@ -38,6 +38,9 @@ export class TelegramHttpClient implements TelegramClient {
           "content-type": "application/json",
         },
         body: JSON.stringify(payload),
+        signal: input.timeoutMs
+          ? AbortSignal.timeout(input.timeoutMs)
+          : undefined,
       },
     );
 
@@ -45,6 +48,15 @@ export class TelegramHttpClient implements TelegramClient {
       const body = await response.text();
       throw new Error(
         `Telegram sendMessage failed: ${response.status} ${body}`,
+      );
+    }
+    const result = (await response.json()) as {
+      ok?: boolean;
+      description?: string;
+    };
+    if (result?.ok !== true) {
+      throw new Error(
+        `Telegram sendMessage failed: ${result?.description ?? "unexpected response"}`,
       );
     }
   }

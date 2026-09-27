@@ -1,6 +1,7 @@
 import { DateTime } from "luxon";
 import {
   explainModeReason,
+  formatScheduleMessage,
   healthModeLabel,
   looksLikeFinanceQuestion,
   looksLikeQuickFinanceInput,
@@ -70,6 +71,8 @@ const HELP_TEXT = [
   "/task task title",
   "/deadline 2026-05-20 task title",
   "/today",
+  "/schedule — расписание на сегодня",
+  "/tomorrow — расписание на завтра",
   "/focus [sleep 7 mood 8 energy 7 stress 3]",
   "/health",
   "/health_log steps:8000 sleep:7h rhr:62 weight:70.5 mood:7 energy:6",
@@ -3033,6 +3036,45 @@ async function handleRemindersCommand(
   });
 }
 
+async function handleScheduleCommand(
+  _args: string,
+  message: TelegramMessage,
+  runtime: TelegramBotRuntime,
+  _user: TelegramUserRecord | null,
+  tomorrow: boolean,
+): Promise<void> {
+  if (
+    message.chat.type !== "private" ||
+    !runtime.scheduleOwnerTelegramId ||
+    message.from?.id !== runtime.scheduleOwnerTelegramId
+  ) {
+    await runtime.telegram.sendMessage({
+      chatId: message.chat.id,
+      text: "Расписание доступно только владельцу бота в личном чате.",
+    });
+    return;
+  }
+  if (!runtime.schedule) {
+    await runtime.telegram.sendMessage({
+      chatId: message.chat.id,
+      text: "Расписание пока не настроено.",
+    });
+    return;
+  }
+  const date = DateTime.fromJSDate(runtime.now?.() ?? new Date())
+    .setZone(runtime.scheduleTimezone ?? "Asia/Almaty")
+    .plus({ days: tomorrow ? 1 : 0 })
+    .toISODate()!;
+  await runtime.telegram.sendMessage({
+    chatId: message.chat.id,
+    text: formatScheduleMessage(
+      date,
+      runtime.schedule.getLessons(date),
+      tomorrow,
+    ),
+  });
+}
+
 async function handleTodayCommand(
   _args: string,
   message: TelegramMessage,
@@ -3524,6 +3566,16 @@ const COMMAND_REGISTRY: Record<string, CommandConfig> = {
   sync: { handler: handleSyncCommand, requiresUser: true },
   reminders: { handler: handleRemindersCommand, requiresUser: true },
   today: { handler: handleTodayCommand, requiresUser: true },
+  schedule: {
+    handler: (args, message, runtime, user) =>
+      handleScheduleCommand(args, message, runtime, user, false),
+    requiresUser: true,
+  },
+  tomorrow: {
+    handler: (args, message, runtime, user) =>
+      handleScheduleCommand(args, message, runtime, user, true),
+    requiresUser: true,
+  },
   focus: { handler: handleFocusCommand, requiresUser: true },
   health: { handler: handleHealthCommand, requiresUser: true },
   health_week: { handler: handleHealthWeekCommand, requiresUser: true },

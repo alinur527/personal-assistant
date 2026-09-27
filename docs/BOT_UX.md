@@ -4,6 +4,14 @@ The Telegram bot is the fastest input surface for LifeOS.
 
 ## Implemented Commands
 
+`/schedule` shows today's group 25-04 timetable; `/tomorrow` shows the next calendar day. Both commands are available only to the active owner in a private chat. The owner is resolved from `OWNER_TELEGRAM_ID`, then `LIFEOS_DEFAULT_TELEGRAM_USER_ID`, then the sole ID in `LIFEOS_ADMIN_TELEGRAM_IDS`. The existing `/today` LifeOS summary is unchanged.
+
+The timetable currently comes from `StaticScheduleProvider` in `packages/core/src/schedule`. It includes common group lessons and subgroup A lessons; subgroup B rows are kept in source data but filtered from every response. The static source can later be replaced through `ScheduleProvider.getLessons(date, group)` without changing commands or daily delivery.
+
+For automatic delivery, set `SCHEDULE_ENABLED=true`, `SCHEDULE_SEND_TIME=20:00`, `SCHEDULE_TIMEZONE=Asia/Almaty`, `SCHEDULE_GROUP=25-04`, and `SCHEDULE_SUBGROUP=A` in the bot environment. The owner must be an active Telegram user, `SUPABASE_SERVICE_ROLE_KEY` must be configured, and both `schedule_deliveries` migrations must be applied. A start after 20:00 catches up for that day. Supabase atomically claims each user and local send date. Telegram `ok: true` moves the claim to `sent`; an API error or the 30-second send timeout moves it to `failed`, which can be claimed again. The bot retries after five minutes while the same local day remains. An unfinished claim becomes eligible after ten minutes. `sent` cannot be claimed again after a restart. This integration has no Telegram idempotency token, so a lost response after Telegram accepted a message can still lead to a duplicate on retry.
+
+Preview without Telegram or database access: `pnpm --filter @lifeos/bot schedule:preview 2026-09-29`.
+
 - `/start` - onboarding and current availability.
 - `/help` - command list.
 - `/cap` - quick capture.

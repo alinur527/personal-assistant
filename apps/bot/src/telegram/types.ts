@@ -1,4 +1,5 @@
 import type { LifeOSStore } from "@lifeos/db";
+import type { ScheduleService } from "@lifeos/core";
 
 export interface TelegramPhotoSize {
   file_id: string;
@@ -63,6 +64,7 @@ export interface TelegramInlineKeyboardMarkup {
 export interface SendMessageInput {
   chatId: number;
   text: string;
+  timeoutMs?: number;
   replyMarkup?: TelegramInlineKeyboardMarkup;
 }
 
@@ -85,4 +87,7 @@ export interface TelegramBotRuntime {
     model?: string;
   };
   now?: () => Date;
+  schedule?: ScheduleService;
+  scheduleTimezone?: string;
+  scheduleOwnerTelegramId?: number;
 }

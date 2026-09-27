@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "start": "tsx src/index.ts",
+    "schedule:preview": "tsx src/schedule/preview.ts",
     "typecheck": "tsc -p ../../tsconfig.json --noEmit"
   },
   "dependencies": {

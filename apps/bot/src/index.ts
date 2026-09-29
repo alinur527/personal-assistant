@@ -5,6 +5,7 @@ import { TelegramHttpClient } from "./telegram/client.js";
 import { ScheduleService, StaticScheduleProvider } from "@lifeos/core";
 import { SupabaseScheduleDeliveryStore } from "@lifeos/db";
 import { startDailySchedule } from "./schedule/daily.js";
+import { createAssistant } from "./assistant/create.js";
 
 const config = loadBotConfig();
 const dependencies = createBotDependencies();
@@ -21,6 +22,7 @@ const server = createBotServer({
   store: dependencies.store,
   telegram,
   schedule,
+  assistant: createAssistant({ config, ...dependencies, schedule }),
   dependencies: {
     supabaseConfigured: Boolean(dependencies.supabase),
     telegramConfigured: Boolean(telegram),

@@ -102,6 +102,29 @@ The canonical health ingest row is `health_daily`. It stores the final Health Co
 
 Indexes are included around user/date, entity type, due dates, sync status, and layer-specific lookup keys. When adding dashboard summary endpoints, prefer indexes that match exact query filters before adding broad materialized views.
 
+## Assistant Tables
+
+`20260929000200_assistant_foundation.sql` adds `assistant_memories` and
+`assistant_actions`. It changes no operational tables or existing data.
+Memories have one current row per `(user_id, memory_key)`; an atomic upsert
+updates a fact, a trigger increments its revision, and archival excludes it
+from retrieval. Access touches do not alter semantic recency. Identical writes
+keep the revision. The audit table has one claim per `(user_id, request_id)`.
+Both tables have RLS and authenticated owner-read policies. Only the backend
+service role can write, so clients cannot bypass candidate or execution policy.
+
+Local database verification (requires Docker, uses no hosted credentials):
+
+```bash
+node scripts/test-assistant-db.mjs
+```
+
+The runner creates an isolated PostgreSQL 17 container with minimal Supabase
+auth/storage contracts, applies all migrations on a clean DB and on an upgrade
+DB with sentinel data, and checks memory lifecycle, actual RLS, privileges and
+action deduplication. It stops/removes only its own temporary container. This
+does not test the hosted Supabase control plane, GoTrue or PostgREST service.
+
 ## Local Supabase Flow
 
 ```bash

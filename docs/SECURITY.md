@@ -108,6 +108,29 @@ Browser apps may use public URLs and public client identifiers only. They must n
 - Obsidian mirror is multi-user-safe only when using `user_obsidian_settings`,
   not the legacy global vault fallback.
 
+## Assistant Execution Boundary
+
+The Brain accepts a principal resolved by the existing backend auth boundary.
+The Telegram adapter admits only private text from active profiles; the static
+university schedule keeps its owner-only permission. Tools validate inputs,
+check permissions and effect class, then validate outputs. There are no shell,
+SQL, arbitrary HTTP, health, finance, destructive or university-credential tools.
+Calendar and Tasks integration remains read-only.
+
+Model routing is separately opt-in (`ASSISTANT_MODEL_ENABLED`). The provider
+receives a bounded message, time/locale and up to four relevant memory excerpts,
+never a DB client, keys, auth context, user IDs, raw operational rows or tool
+results. Secret-shaped input is not sent. Structured model output is untrusted
+and goes through the registry again. The model sees only authorized READ tools;
+writes require the exact explicit request recognized by deterministic routing.
+
+Memory requires explicit opt-in, schema and retention-policy validation. RLS
+protects owner reads; direct client writes are revoked. Every service-role query
+also carries `user_id`. Audit claims are persisted before actions, contain no
+message/tool arguments or response, and prevent duplicate execution. A crash
+after claiming a write does not trigger an automatic retry; check the existing
+record before submitting a new request. See `ASSISTANT_ARCHITECTURE.md`.
+
 ## Operational Hygiene
 
 - Use least-privilege deploy tokens where platforms support them.

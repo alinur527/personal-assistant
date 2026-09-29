@@ -84,6 +84,33 @@ receive a generic denial and cannot inspect another user's settings.
 After `/obsidian_set_vault` and `/obsidian_enable`, active users see the
 path-free Obsidian status card in the TMA dashboard.
 
+## Natural Language Assistant
+
+After applying the assistant migration and enabling `ASSISTANT_ENABLED`, private
+messages from active users support «Что у меня сегодня?», «Что завтра?»,
+«Какая следующая пара?», «Есть новые оценки?», «Какие задачи остались?»,
+«Какие у меня задачи сегодня?», «Покажи календарь» and «Покажи напоминания».
+The timetable retains its existing owner-only restriction.
+
+Write examples:
+
+```text
+Напомни завтра в 19:00 купить воду
+Напомни через 30 минут сделать перерыв
+Запомни: предпочитаю краткие ответы
+Запомни: дорога из университета занимает час
+Запомни: теперь дорога занимает 40 минут
+Запомни: learning study.review: Мне помогает повторять материал утром
+Покажи память
+Забудь commute.duration
+```
+
+Ambiguous reminder times (including «вечером») request a complete message with
+an exact time. Existing `/schedule`, `/tomorrow`, `/remind`, captures and finance
+flows retain their implementations. Explicit assistant requests take precedence
+over broad finance keyword matching; standalone «Такси 2700» still uses finance.
+Unknown text remains a capture. No LLM key is required for deterministic requests.
+
 ## Interaction Principles
 
 - Commands should respond with short, actionable messages.

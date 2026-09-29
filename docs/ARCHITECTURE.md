@@ -80,6 +80,16 @@ Do not present ICS or standalone monthly-review integrations as fully multi-user
 - Arch Linux: `workers/obsidian-mirror` and a local Obsidian vault.
 - Android phone: `apps/health-bridge` Health Connect bridge.
 
+## Assistant Foundation
+
+`apps/bot/src/assistant/brain.ts` is the application entry point for personal
+assistant requests. Authenticated private Telegram text can reach it when
+`ASSISTANT_ENABLED=true`; existing slash commands retain their handlers.
+Pure contracts and memory policy live in `packages/core/src/assistant`, runtime
+tools in the bot, and scoped persistence in `packages/db/src/assistant-store.ts`.
+See [Assistant Architecture](ASSISTANT_ARCHITECTURE.md) for the tool allowlist,
+memory lifecycle, audit/idempotency rules, and rollout prerequisites.
+
 ## Current Acceptance Boundary
 
 This phase stabilizes the first vertical slice: Telegram capture/tasks/workouts, TMA workout control, health ingest, Supabase persistence, and Obsidian queue rendering. It does not add production web dashboard auth or Android production build hardening.

@@ -8,6 +8,7 @@ import {
   parseFinanceText,
   parseLifeMode,
   resolveHealthMode,
+  routeAssistantMessage,
   scoreFocus,
   type FinanceParseResult,
   type HealthMetricType,
@@ -73,6 +74,7 @@ const HELP_TEXT = [
   "/today",
   "/schedule — расписание на сегодня",
   "/tomorrow — расписание на завтра",
+  "При включённом ассистенте: «Что завтра?», «Есть новые оценки?», «Напомни завтра в 19:00 купить воду».",
   "/focus [sleep 7 mood 8 energy 7 stress 3]",
   "/health",
   "/health_log steps:8000 sleep:7h rhr:62 weight:70.5 mood:7 energy:6",
@@ -1028,7 +1030,7 @@ function localDateTimeUtc(
   return localDateTime.toUTC().toJSDate().toISOString();
 }
 
-function parseReminderArgs(
+export function parseReminderArgs(
   args: string,
   now: Date,
   timezone: string,
@@ -4041,6 +4043,56 @@ export async function handleTelegramUpdate(
 
   if (!message.text) {
     return;
+  }
+
+  // Keep explicit commands, quick finance, and finance questions on their
+  // existing paths. Only private, authenticated text reaches the Brain.
+  if (
+    runtime.assistant &&
+    message.chat.type === "private" &&
+    !message.text.trim().startsWith("/") &&
+    (routeAssistantMessage(message.text) ||
+      (!looksLikeQuickFinanceInput(message.text) &&
+        !looksLikeFinanceQuestion(message.text)))
+  ) {
+    const user = await resolveUser(message, runtime);
+    if (!user || !runtime.store) return;
+    const result = await runtime.assistant.handle({
+      principal: {
+        userId: user.userId,
+        status: user.status,
+        timezone: user.timezone || LOCAL_TIMEZONE,
+        locale: "ru",
+        permissions: [
+          "personal.read",
+          "reminder.write",
+          "memory.write",
+          ...(runtime.scheduleOwnerTelegramId &&
+          message.from?.id === runtime.scheduleOwnerTelegramId
+            ? ["schedule.read" as const]
+            : []),
+        ],
+      },
+      message: message.text,
+      source: "telegram",
+      conversationId: `telegram:${message.chat.id}`,
+      requestId: `telegram:${message.chat.id}:${message.message_id}`,
+    });
+    if (result.handled) {
+      // Responses are rendered by trusted tools, which escape dynamic content.
+      for (const text of result.text
+        .split("\n")
+        .reduce<string[]>((parts, block) => {
+          const last = parts.at(-1);
+          if (last && last.length + block.length + 1 <= 3900)
+            parts[parts.length - 1] += `\n${block}`;
+          else parts.push(block);
+          return parts;
+        }, [])) {
+        await runtime.telegram.sendMessage({ chatId: message.chat.id, text });
+      }
+      return;
+    }
   }
 
   const parsed = parseCommand(message.text);

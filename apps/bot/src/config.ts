@@ -24,6 +24,9 @@ export interface BotConfig {
   openRouterApiKey?: string;
   financeAiModel?: string;
   financeAiEnabled: boolean;
+  assistantEnabled: boolean;
+  assistantModelEnabled: boolean;
+  assistantModel?: string;
   googleOAuthClientId?: string;
   googleOAuthClientSecret?: string;
   googleOAuthRedirectUri?: string;
@@ -86,6 +89,20 @@ function booleanEnv(
 }
 
 export function loadBotConfig(source: EnvSource = process.env): BotConfig {
+  const assistantModelEnabled = booleanEnv(
+    source,
+    "ASSISTANT_MODEL_ENABLED",
+    false,
+  );
+  if (
+    assistantModelEnabled &&
+    (!optionalEnv(source, "OPENROUTER_API_KEY") ||
+      !optionalEnv(source, "ASSISTANT_MODEL"))
+  ) {
+    throw new Error(
+      "ASSISTANT_MODEL_ENABLED requires OPENROUTER_API_KEY and ASSISTANT_MODEL",
+    );
+  }
   const nodeEnv =
     optionalEnv(source, "NODE_ENV", "development") ?? "development";
   const allowUnsafeTmaDevAuth = booleanEnv(
@@ -172,6 +189,9 @@ export function loadBotConfig(source: EnvSource = process.env): BotConfig {
     openRouterApiKey: optionalEnv(source, "OPENROUTER_API_KEY"),
     financeAiModel: optionalEnv(source, "FINANCE_AI_MODEL"),
     financeAiEnabled: booleanEnv(source, "FINANCE_AI_ENABLED", false),
+    assistantEnabled: booleanEnv(source, "ASSISTANT_ENABLED", false),
+    assistantModelEnabled,
+    assistantModel: optionalEnv(source, "ASSISTANT_MODEL"),
     googleOAuthClientId: optionalEnv(source, "GOOGLE_OAUTH_CLIENT_ID"),
     googleOAuthClientSecret: optionalEnv(source, "GOOGLE_OAUTH_CLIENT_SECRET"),
     googleOAuthRedirectUri: optionalEnv(source, "GOOGLE_OAUTH_REDIRECT_URI"),

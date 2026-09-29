@@ -450,6 +450,19 @@ export interface ListSourceEventsFilters {
   before?: string;
   after?: string;
   limit?: number;
+  /** Include calendar events spanning the beginning of a requested window. */
+  overlapsAfter?: string;
+  recentFirst?: boolean;
+  dueBeforeOrUnscheduled?: string;
+  externalIdPrefix?: string;
+}
+
+export interface GradeChangeRecord {
+  courseTitle: string;
+  title: string;
+  score: string;
+  maxScore: string | null;
+  changedAt: string;
 }
 
 export interface CreateReminderInput {
@@ -1247,6 +1260,7 @@ export interface LifeOSStore {
     userId: string;
     mode: LifeMode;
     limit?: number;
+    dueBeforeOrUnscheduled?: string;
   }): Promise<ModeAwareFocusItemRecord[]>;
   getOrCreateCurrentWorkout(input: {
     userId: string;
@@ -1335,7 +1349,15 @@ export interface LifeOSStore {
   ): Promise<ReminderRecord>;
   getReminderMode(userId: string): Promise<ReminderMode>;
   setReminderMode(userId: string, mode: ReminderMode): Promise<ReminderMode>;
-  listAcademicRecords(userId: string): Promise<AcademicRecord[]>;
+  listAcademicRecords(
+    userId: string,
+    sourceEventIds?: string[],
+  ): Promise<AcademicRecord[]>;
+  listGradeChanges?(
+    userId: string,
+    since: string,
+    limit?: number,
+  ): Promise<GradeChangeRecord[]>;
   upsertAcademicRecord(
     input: UpsertAcademicRecordInput,
   ): Promise<AcademicRecord>;
@@ -4056,12 +4078,18 @@ export class SupabaseLifeOSStore implements LifeOSStore {
     userId: string;
     mode: LifeMode;
     limit?: number;
+    dueBeforeOrUnscheduled?: string;
   }): Promise<ModeAwareFocusItemRecord[]> {
-    const { data, error } = await this.client
+    let query = this.client
       .from("tasks")
       .select("id, title, due_at, priority, metadata")
       .eq("user_id", input.userId)
-      .not("status", "in", "(done,cancelled)")
+      .not("status", "in", "(done,cancelled)");
+    if (input.dueBeforeOrUnscheduled) {
+      const before = new Date(input.dueBeforeOrUnscheduled).toISOString();
+      query = query.or(`due_at.is.null,due_at.lte.${before}`);
+    }
+    const { data, error } = await query
       .order("due_at", { ascending: true, nullsFirst: false })
       .order("priority", { ascending: false })
       .limit(Math.max(input.limit ?? 8, 20));
@@ -5017,6 +5045,11 @@ export class SupabaseLifeOSStore implements LifeOSStore {
     if (filters.eventType) {
       query = query.eq("event_type", filters.eventType);
     }
+    if (filters.externalIdPrefix) {
+      if (!/^[a-zA-Z0-9:_-]+$/.test(filters.externalIdPrefix))
+        throw new Error("Invalid external ID prefix");
+      query = query.like("external_id", `${filters.externalIdPrefix}%`);
+    }
 
     if (filters.after) {
       query = query.or(
@@ -5028,6 +5061,21 @@ export class SupabaseLifeOSStore implements LifeOSStore {
       query = query.or(
         `starts_at.lte.${filters.before},due_at.lte.${filters.before}`,
       );
+    }
+
+    if (filters.overlapsAfter) {
+      if (!Number.isFinite(Date.parse(filters.overlapsAfter)))
+        throw new Error("Invalid event window");
+      const after = new Date(filters.overlapsAfter).toISOString();
+      query = query.or(
+        `ends_at.gt.${after},and(ends_at.is.null,starts_at.gte.${after})`,
+      );
+    }
+    if (filters.recentFirst)
+      query = query.order("updated_at", { ascending: false });
+    if (filters.dueBeforeOrUnscheduled) {
+      const before = new Date(filters.dueBeforeOrUnscheduled).toISOString();
+      query = query.or(`due_at.is.null,due_at.lte.${before}`);
     }
 
     const { data, error } = await query
@@ -5355,11 +5403,17 @@ export class SupabaseLifeOSStore implements LifeOSStore {
     return normalized;
   }
 
-  async listAcademicRecords(userId: string): Promise<AcademicRecord[]> {
-    const { data, error } = await this.client
+  async listAcademicRecords(
+    userId: string,
+    sourceEventIds?: string[],
+  ): Promise<AcademicRecord[]> {
+    if (sourceEventIds?.length === 0) return [];
+    let query = this.client
       .from("academic_records")
       .select("*")
-      .eq("user_id", userId)
+      .eq("user_id", userId);
+    if (sourceEventIds) query = query.in("source_event_id", sourceEventIds);
+    const { data, error } = await query
       .order("occurs_at", { ascending: true, nullsFirst: false })
       .order("due_at", { ascending: true, nullsFirst: false })
       .limit(50);
@@ -5369,6 +5423,40 @@ export class SupabaseLifeOSStore implements LifeOSStore {
     }
 
     return data.map(toAcademicRecord);
+  }
+
+  async listGradeChanges(
+    userId: string,
+    since: string,
+    limit = 20,
+  ): Promise<GradeChangeRecord[]> {
+    const { data, error } = await this.client
+      .from("reminders")
+      .select("metadata_json, created_at")
+      .eq("user_id", userId)
+      .eq("reminder_policy_key", "platonus_grade")
+      .gte("created_at", since)
+      .order("created_at", { ascending: false })
+      .limit(limit);
+    if (error) throw new Error("Failed to list grade changes");
+    return data.flatMap((row) => {
+      const item = jsonObject(row.metadata_json);
+      if (
+        typeof item.course_title !== "string" ||
+        typeof item.assessment_title !== "string" ||
+        typeof item.score !== "string"
+      )
+        return [];
+      return [
+        {
+          courseTitle: item.course_title,
+          title: item.assessment_title,
+          score: item.score,
+          maxScore: typeof item.max_score === "string" ? item.max_score : null,
+          changedAt: row.created_at,
+        },
+      ];
+    });
   }
 
   async upsertAcademicRecord(

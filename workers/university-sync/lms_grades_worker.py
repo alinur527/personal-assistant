@@ -12,8 +12,7 @@ ENCRYPTION CONTRACT
 Passwords and WS tokens are stored as ``enc:v1:<base64(iv+ciphertext+tag)>``
 ciphertext produced by the application layer (TypeScript ``@lifeos/db/crypto``).
 The ``decrypt_field()`` function below is the Python mirror of that AES-256-GCM
-scheme.  If the ENCRYPTION_KEY env var is absent the worker falls back to
-identity pass-through and emits a WARNING so the operator is aware.
+scheme. The worker requires ENCRYPTION_KEY and encrypted fields.
 
 MULTI-TENANCY MODEL
 ===================
@@ -50,6 +49,7 @@ from typing import Any, Callable, NamedTuple
 # parents[0] = workers/university-sync/
 # parents[1] = workers/
 sys.path.insert(0, str(Path(__file__).resolve().parent))     # university-sync/
+sys.path.insert(0, str(Path(__file__).resolve().parent / "aitu-parser"))
 sys.path.insert(0, str(Path(__file__).resolve().parents[1])) # workers/
 
 from common.lifeos_sync import (  # noqa: E402
@@ -62,7 +62,7 @@ from common.lifeos_sync import (  # noqa: E402
     load_dotenv,
     utc_now,
 )
-from aitu_parser.university_scraper import (  # noqa: E402
+from university_scraper import (  # noqa: E402
     MoodleClient,
     Settings as MoodleSettings,
     sync_grades as sync_moodle_grades,
@@ -89,7 +89,7 @@ _ENCRYPTION_KEY: bytes | None = None
 def _load_encryption_key() -> bytes | None:
     """
     Read the 32-byte AES-256 key from ENCRYPTION_KEY (hex or base64).
-    Returns None if the variable is absent — decryption falls back to identity.
+    Returns None if the variable is absent.
     """
     raw = os.environ.get("ENCRYPTION_KEY", "").strip()
     if not raw:
@@ -108,30 +108,18 @@ def decrypt_field(ciphertext: str) -> str:
     Decrypt an ``enc:v1:<base64>`` field produced by the TypeScript
     ``@lifeos/db/crypto`` module (AES-256-GCM, 12-byte IV, 16-byte auth tag).
 
-    Falls back to identity (returns the string unchanged) when:
-    - ``ENCRYPTION_KEY`` is not configured
-    - The field does not start with ``enc:v1:`` (plaintext dev value)
-
-    Emits a WARNING on plaintext fallback so operators can detect mis-configured
-    environments.
+    Rejects plaintext and a missing key instead of passing ciphertext or
+    credentials to an LMS login endpoint.
     """
     global _ENCRYPTION_KEY
     if _ENCRYPTION_KEY is None:
         _ENCRYPTION_KEY = _load_encryption_key()
 
     if not ciphertext.startswith("enc:v1:"):
-        log.warning(
-            "decrypt_field: field does not carry enc:v1 prefix — "
-            "returning as-is (plaintext). Set ENCRYPTION_KEY to enable decryption."
-        )
-        return ciphertext
+        raise SyncError("LMS credential must use enc:v1 encryption")
 
     if _ENCRYPTION_KEY is None:
-        log.warning(
-            "decrypt_field: ENCRYPTION_KEY is not set — returning ciphertext as-is. "
-            "Configure ENCRYPTION_KEY to decrypt worker credentials."
-        )
-        return ciphertext
+        raise SyncError("ENCRYPTION_KEY is required to decrypt LMS credentials")
 
     try:
         from cryptography.hazmat.primitives.ciphers.aead import AESGCM  # type: ignore
@@ -199,12 +187,19 @@ def _handle_platonus(
         username=row["username"],
         password=decrypt_field(row["encrypted_password"]),
         poll_seconds=3600,
+        allow_mock=False,
     )
     client = PlatonusClient(platonus_settings)
     client.authenticate()
     grades = client.fetch_grades()
     mode = db.get_reminder_mode()
-    return sync_platonus_grades(db, platonus_settings, grades, mode)
+    return sync_platonus_grades(
+        db,
+        platonus_settings,
+        grades,
+        mode,
+        notify_changes=bool(row.get("last_sync_success_at")),
+    )
 
 
 PLATFORM_HANDLERS: dict[str, PlatformHandler] = {
@@ -314,6 +309,7 @@ def main() -> int:
     master_settings = load_base_settings(
         legacy_guard_env=None,
         worker_name="LMS Grades Master Worker",
+        require_user_id=False,
     )
     master_db = SupabaseRestClient(master_settings)
 

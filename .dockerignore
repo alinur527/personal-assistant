@@ -1,0 +1,13 @@
+.git
+**/.env
+**/.env.*
+**/secrets/**
+**/*.har
+**/gradebook.html
+**/Platonu1s.htm
+**/node_modules/**
+**/__pycache__/**
+**/.venv/**
+**/*.pyc
+downloads/**
+Downloads/**

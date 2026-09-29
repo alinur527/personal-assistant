@@ -50,6 +50,11 @@ client_secret*.json
 credentials*.json
 *.pem
 *.key
+*.har
+gradebook.html
+Platonu1s.htm
+Downloads/
+downloads/
 
 # Vitest
 .vitest-cache/
@@ -67,4 +72,3 @@ supabase/.temp/
 
 # Local downloaded skill repositories
 external-skills/
-

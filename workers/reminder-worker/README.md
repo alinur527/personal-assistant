@@ -2,7 +2,20 @@
 
 Sends pending LifeOS `reminders` rows to Telegram.
 
-The worker is designed for the Arch Linux server that already hosts local LifeOS workers. Supabase remains the source of truth; the worker reads due rows, resolves each row's `user_id` to an active `profiles.telegram_user_id`, sends Telegram messages to that owner, and updates reminder status.
+The worker can run as a private Railway service. Supabase remains the source of truth; the worker reads due rows, resolves each row's `user_id` to an active `profiles.telegram_user_id`, sends Telegram messages to that owner, and updates reminder status.
+
+## Railway
+
+Create a separate private service from the repository root and select
+`deploy/railway/reminder-worker.Dockerfile` as its Dockerfile path. The image
+runs `reminder_worker.py run-loop`. Configure `SUPABASE_URL`,
+`SUPABASE_SERVICE_ROLE_KEY`, and `TELEGRAM_BOT_TOKEN` as service Variables.
+Optional settings: `REMINDER_WORKER_POLL_SECONDS=30`,
+`REMINDER_WORKER_BATCH_SIZE=20`, `APP_TIMEZONE=Asia/Qyzylorda`.
+Set `REMINDER_WORKER_ONLY_POLICY_KEY=platonus_grade` for this deployment. It
+claims and sends only Platonus grade notifications, leaving existing general
+reminders alone. Do not assign the worker a public domain. Run only one
+Platonus reminder worker while starting this integration.
 
 ## Commands
 

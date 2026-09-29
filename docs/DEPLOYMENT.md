@@ -54,6 +54,11 @@ railway up
 
 Railway builds from a Dockerfile when configured, then starts the resulting container. See Railway deployment docs: https://docs.railway.com/deployments/reference and CLI deploy docs: https://docs.railway.com/cli/deploying.
 
+The Platonus grade poller and its dedicated Telegram reminder sender use two
+additional private Railway services. Follow
+`deploy/railway/PLATONUS_RUNBOOK.md` to establish the local baseline, verify
+an unchanged dry-run, and then launch the services.
+
 ## Telegram Webhook
 
 ```bash

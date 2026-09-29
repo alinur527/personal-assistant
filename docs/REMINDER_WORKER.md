@@ -4,9 +4,14 @@ The reminder worker sends due LifeOS reminders to Telegram.
 
 Supabase stays the source of truth. Telegram `/remind` and the TMA create rows in `public.reminders`; the worker polls for pending Telegram reminders whose `remind_at` is due, resolves `reminders.user_id` to an active `profiles.telegram_user_id`, sends a Telegram message to that owner, then marks the row `sent`.
 
-## Why It Runs On Arch
+## Deployment
 
-The worker is an always-on background process, similar to the Obsidian mirror worker already running on the Arch server through systemd. Keeping it there avoids adding another Railway service for a small polling loop and keeps service-role credentials off browser-facing apps.
+The worker is an always-on background process. The dedicated Platonus sender
+runs as a private Railway service with
+`REMINDER_WORKER_ONLY_POLICY_KEY=platonus_grade`; this keeps older general
+reminders untouched. See `deploy/railway/PLATONUS_RUNBOOK.md` for the staged
+launch. The systemd instructions below remain available for an Arch worker
+that handles the general reminder queue.
 
 ## Environment
 

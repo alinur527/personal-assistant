@@ -6,6 +6,7 @@ Never commit real values for:
 
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `TELEGRAM_BOT_TOKEN`
+- `PLATONUS_PASSWORD`
 - `TELEGRAM_WEBHOOK_SECRET`
 - `LIFEOS_HEALTH_INGEST_JWT_SECRET`
 - Android bridge endpoint secrets
@@ -112,3 +113,20 @@ Browser apps may use public URLs and public client identifiers only. They must n
 - Use least-privilege deploy tokens where platforms support them.
 - Keep production, preview, and local env values separate.
 - Review logs before sharing, since webhook payloads can contain personal data.
+
+## Railway Platonus and Reminder Workers
+
+- Store Platonus login and password only in the private Platonus Railway
+  service's Variables. The private reminder service needs the Telegram bot
+  token. Both services need the Supabase service-role key; neither needs a
+  public domain.
+- Scope the single-user Platonus worker to the intended
+  `LIFEOS_DEFAULT_USER_ID` and enable its legacy guard only for this accepted
+  single-user deployment. The reminder worker resolves each recipient from an
+  active profile with the reminder's `user_id`.
+- Keep `.env` files, HAR captures, Cookie values, and session data outside
+  deployed images. `.dockerignore` and `.railwayignore` exclude local copies.
+- Do not log credentials, tokens, raw provider responses, or sessions. The
+  Platonus `dry-run` reads saved grades without writing or sending messages.
+- Set `REMINDER_WORKER_ONLY_POLICY_KEY=platonus_grade` on the dedicated Railway
+  sender so starting it cannot deliver unrelated older reminders.

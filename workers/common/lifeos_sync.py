@@ -474,7 +474,7 @@ class SupabaseRestClient:
         return reminder_mode(settings.get("reminder_mode") if isinstance(settings, dict) else None)
 
     def upsert_event(
-        self, event: JsonObject, mode: str
+        self, event: JsonObject, mode: str, *, sync_reminders: bool = True
     ) -> tuple[JsonObject, bool, ReminderSyncStats]:
         source_key = str(event["source_key"])
         external_id = str(event["external_id"])
@@ -519,7 +519,10 @@ class SupabaseRestClient:
         )
         synced = rows[0]
         self._sync_life_entity(synced)
-        reminder_stats = self._sync_reminders(synced, mode)
+        reminder_stats = (
+            self._sync_reminders(synced, mode)
+            if sync_reminders else ReminderSyncStats()
+        )
         return synced, not bool(existing), reminder_stats
 
     def _sync_life_entity(self, event: JsonObject) -> None:

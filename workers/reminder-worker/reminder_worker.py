@@ -32,11 +32,11 @@ class WorkerError(RuntimeError):
 
 
 class SupabaseClientProtocol(Protocol):
-    def list_due_reminders(self, before: str, limit: int) -> list[JsonObject]: ...
+    def list_due_reminders(self, before: str, limit: int, policy_key: str | None = None) -> list[JsonObject]: ...
 
     def claim_due_reminders(self, before: str, limit: int) -> list[JsonObject]: ...
 
-    def claim_reminder(self, reminder_id: str) -> JsonObject | None: ...
+    def claim_reminder(self, reminder_id: str, policy_key: str | None = None) -> JsonObject | None: ...
 
     def resolve_reminder_recipient(self, reminder: JsonObject) -> str | None: ...
 
@@ -48,7 +48,7 @@ class SupabaseClientProtocol(Protocol):
 
     def defer_reminder(self, reminder_id: str, remind_at: str) -> JsonObject | None: ...
 
-    def release_stale_claims(self, before: str) -> None: ...
+    def release_stale_claims(self, before: str, policy_key: str | None = None) -> None: ...
 
 
 class TelegramClientProtocol(Protocol):
@@ -67,6 +67,7 @@ class Settings:
     quiet_hours_start: str = "23:00"
     quiet_hours_end: str = "08:00"
     claim_timeout_minutes: int = 5
+    only_policy_key: str | None = None
 
 
 @dataclass
@@ -131,6 +132,10 @@ def load_settings(env_file: Path | None = None) -> Settings:
     if env_file is not None:
         load_dotenv(env_file)
 
+    only_policy_key = os.environ.get("REMINDER_WORKER_ONLY_POLICY_KEY", "").strip() or None
+    if only_policy_key and not re.fullmatch(r"[a-z0-9_]+", only_policy_key):
+        raise WorkerError("REMINDER_WORKER_ONLY_POLICY_KEY has an invalid format")
+
     return Settings(
         supabase_url=getenv_required("SUPABASE_URL").rstrip("/"),
         service_role_key=getenv_required("SUPABASE_SERVICE_ROLE_KEY"),
@@ -152,6 +157,7 @@ def load_settings(env_file: Path | None = None) -> Settings:
         ).strip()
         or "08:00",
         claim_timeout_minutes=getenv_int("REMINDER_WORKER_CLAIM_TIMEOUT_MINUTES", 5),
+        only_policy_key=only_policy_key,
     )
 
 
@@ -191,9 +197,10 @@ def local_time_label(value: str, timezone_name: str = LOCAL_TIMEZONE) -> str:
 
 SENSITIVE_ERROR_PATTERNS = [
     (re.compile(r"(?i)(authorization\s*[:=]\s*bearer\s+)[^\s,;]+"), r"\1[REDACTED]"),
+    (re.compile(r"(?i)((?:set-cookie|cookie)\s*[:=]\s*)[^\r\n]+"), r"\1[REDACTED]"),
     (re.compile(r"(?i)(bot)[0-9]{5,}:[A-Za-z0-9_-]{10,}"), r"\1[REDACTED]"),
-    (re.compile(r"(?i)(api[_-]?key|access[_-]?token|refresh[_-]?token|service[_-]?role[_-]?key|supabase[_-]?key|token|password|secret)(\s*[:=]\s*)[^\s,;]+"), r"\1\2[REDACTED]"),
-    (re.compile(r"(?i)([?&](?:access_token|refresh_token|api_key|apikey|token|password|key|secret)=)[^&#\s]+"), r"\1[REDACTED]"),
+    (re.compile(r"(?i)(api[_-]?key|access[_-]?token|refresh[_-]?token|service[_-]?role[_-]?key|supabase[_-]?key|jsessionid|session(?:id)?|token|password|secret)(\s*[:=]\s*)[^\s,;]+"), r"\1\2[REDACTED]"),
+    (re.compile(r"(?i)([?&](?:access_token|refresh_token|api_key|apikey|jsessionid|session(?:id)?|token|password|key|secret)=)[^&#\s]+"), r"\1[REDACTED]"),
 ]
 
 
@@ -282,10 +289,9 @@ class SupabaseRestClient:
             with urllib.request.urlopen(request, timeout=REQUEST_TIMEOUT_SECONDS) as response:
                 raw = response.read().decode("utf-8")
         except urllib.error.HTTPError as exc:
-            detail = exc.read().decode("utf-8", errors="replace")
-            raise WorkerError(f"Supabase {method} {table} failed: {exc.code} {detail}") from exc
+            raise WorkerError(f"Supabase {method} {table} failed: HTTP {exc.code}") from exc
         except urllib.error.URLError as exc:
-            raise WorkerError(f"Supabase {method} {table} failed: {exc.reason}") from exc
+            raise WorkerError(f"Supabase {method} {table} failed: network_error") from exc
 
         if not raw:
             return None
@@ -305,44 +311,59 @@ class SupabaseRestClient:
         )
         return rows or []
 
-    def list_due_reminders(self, before: str, limit: int) -> list[JsonObject]:
+    def list_due_reminders(
+        self, before: str, limit: int, policy_key: str | None = None
+    ) -> list[JsonObject]:
+        query = {
+            "select": "*",
+            "status": "eq.pending",
+            "channel": "eq.telegram",
+            "remind_at": f"lte.{before}",
+            "order": "remind_at.asc",
+            "limit": str(limit),
+        }
+        if policy_key:
+            query["reminder_policy_key"] = f"eq.{policy_key}"
         rows = self.request(
             "GET",
             "reminders",
-            {
-                "select": "*",
-                "status": "eq.pending",
-                "channel": "eq.telegram",
-                "remind_at": f"lte.{before}",
-                "order": "remind_at.asc",
-                "limit": str(limit),
-            },
+            query,
         )
         return rows or []
 
-    def list_next_pending_reminders(self, limit: int) -> list[JsonObject]:
+    def list_next_pending_reminders(
+        self, limit: int, policy_key: str | None = None
+    ) -> list[JsonObject]:
+        query = {
+            "select": "id,message,remind_at,status,channel",
+            "status": "eq.pending",
+            "channel": "eq.telegram",
+            "order": "remind_at.asc",
+            "limit": str(limit),
+        }
+        if policy_key:
+            query["reminder_policy_key"] = f"eq.{policy_key}"
         rows = self.request(
             "GET",
             "reminders",
-            {
-                "select": "id,message,remind_at,status,channel",
-                "status": "eq.pending",
-                "channel": "eq.telegram",
-                "order": "remind_at.asc",
-                "limit": str(limit),
-            },
+            query,
         )
         return rows or []
 
-    def claim_reminder(self, reminder_id: str) -> JsonObject | None:
+    def claim_reminder(
+        self, reminder_id: str, policy_key: str | None = None
+    ) -> JsonObject | None:
+        query = {
+            "id": f"eq.{reminder_id}",
+            "status": "eq.pending",
+            "select": "*",
+        }
+        if policy_key:
+            query["reminder_policy_key"] = f"eq.{policy_key}"
         rows = self.request(
             "PATCH",
             "reminders",
-            {
-                "id": f"eq.{reminder_id}",
-                "status": "eq.pending",
-                "select": "*",
-            },
+            query,
             {
                 "status": "processing",
                 "claimed_at": utc_now(),
@@ -448,14 +469,19 @@ class SupabaseRestClient:
         )
         return rows[0] if rows else None
 
-    def release_stale_claims(self, before: str) -> None:
+    def release_stale_claims(
+        self, before: str, policy_key: str | None = None
+    ) -> None:
+        query = {
+            "status": "eq.processing",
+            "claimed_at": f"lt.{before}",
+        }
+        if policy_key:
+            query["reminder_policy_key"] = f"eq.{policy_key}"
         self.request(
             "PATCH",
             "reminders",
-            {
-                "status": "eq.processing",
-                "claimed_at": f"lt.{before}",
-            },
+            query,
             {
                 "status": "pending",
                 "claimed_at": None,
@@ -536,10 +562,9 @@ class TelegramApiClient:
             with urllib.request.urlopen(request, timeout=REQUEST_TIMEOUT_SECONDS) as response:
                 raw = response.read().decode("utf-8")
         except urllib.error.HTTPError as exc:
-            detail = exc.read().decode("utf-8", errors="replace")
-            raise WorkerError(f"Telegram send failed: {exc.code} {detail}") from exc
+            raise WorkerError(f"Telegram send failed: HTTP {exc.code}") from exc
         except urllib.error.URLError as exc:
-            raise WorkerError(f"Telegram send failed: {exc.reason}") from exc
+            raise WorkerError("Telegram send failed: network_error") from exc
 
         try:
             result = json.loads(raw)
@@ -547,8 +572,7 @@ class TelegramApiClient:
             raise WorkerError("Telegram send failed: invalid JSON response") from exc
 
         if not result.get("ok"):
-            description = result.get("description") or "unknown Telegram error"
-            raise WorkerError(f"Telegram send failed: {description}")
+            raise WorkerError("Telegram send failed: rejected")
 
 
 def format_context_line(context: JsonObject) -> list[str]:
@@ -637,6 +661,28 @@ def format_telegram_message(
     source_label = str(metadata.get("source_label") or "Manual")
     priority = str(metadata.get("priority") or "normal")
     notification_kind = str(metadata.get("notification_kind") or "reminder")
+    if notification_kind == "platonus_grade":
+        heading = (
+            "🎓 Оценка изменена в Platonus"
+            if metadata.get("change_kind") == "updated"
+            else "🎓 Новая оценка в Platonus"
+        )
+        course = str(metadata.get("course_title") or "Предмет не указан")[:200]
+        assessment = str(metadata.get("assessment_title") or "Оценка")[:200]
+        score_value = metadata.get("score")
+        score = str(score_value if score_value is not None else "—")[:30]
+        max_score = metadata.get("max_score")
+        teacher = str(metadata.get("teacher") or "Не указан в Platonus")[:200]
+        score_label = f"{score} / {max_score}" if max_score is not None else score
+        return "\n".join(
+            [
+                heading,
+                f"Предмет: {course}",
+                f"Работа: {assessment}",
+                f"Оценка: {score_label}",
+                f"Преподаватель: {teacher}",
+            ]
+        )
     if notification_kind == "deadline":
         try:
             remaining = parse_datetime(event_at) - datetime.now(timezone.utc)
@@ -682,7 +728,12 @@ def process_due_reminders(
 ) -> ProcessSummary:
     claim_due_reminders = getattr(supabase, "claim_due_reminders", None)
 
-    if callable(claim_due_reminders):
+    if settings.only_policy_key:
+        reminders = supabase.list_due_reminders(
+            utc_now(), settings.batch_size, settings.only_policy_key
+        )
+        reminders_are_claimed = False
+    elif callable(claim_due_reminders):
         reminders = claim_due_reminders(utc_now(), settings.batch_size)
         reminders_are_claimed = True
     else:
@@ -703,6 +754,8 @@ def process_due_reminders(
         try:
             if reminders_are_claimed:
                 claimed = reminder
+            elif settings.only_policy_key:
+                claimed = supabase.claim_reminder(reminder_id, settings.only_policy_key)
             else:
                 claimed = supabase.claim_reminder(reminder_id)
             if not claimed:
@@ -777,7 +830,7 @@ def run_once(settings: Settings) -> ProcessSummary:
     stale_before = (
         datetime.now(timezone.utc) - timedelta(minutes=settings.claim_timeout_minutes)
     ).isoformat().replace("+00:00", "Z")
-    supabase.release_stale_claims(stale_before)
+    supabase.release_stale_claims(stale_before, settings.only_policy_key)
     telegram = TelegramApiClient(settings.telegram_bot_token)
     return process_due_reminders(settings, supabase, telegram)
 
@@ -816,11 +869,14 @@ def test_send(settings: Settings) -> None:
 
 def status(settings: Settings) -> None:
     supabase = SupabaseRestClient(settings.supabase_url, settings.service_role_key)
-    due = supabase.list_due_reminders(utc_now(), settings.batch_size)
-    upcoming = supabase.list_next_pending_reminders(1)
+    due = supabase.list_due_reminders(
+        utc_now(), settings.batch_size, settings.only_policy_key
+    )
+    upcoming = supabase.list_next_pending_reminders(1, settings.only_policy_key)
     print("Reminder worker status")
     print(f"Poll seconds: {settings.poll_seconds}")
     print(f"Batch size: {settings.batch_size}")
+    print(f"Policy key: {settings.only_policy_key or 'all'}")
     print(f"Due pending telegram reminders (first batch): {len(due)}")
 
     if upcoming:

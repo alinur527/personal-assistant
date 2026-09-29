@@ -72,6 +72,9 @@ Do not present ICS or standalone monthly-review integrations as fully multi-user
 ## Deployment Targets
 
 - Railway: `apps/bot` backend HTTP service.
+- Railway: private `workers/university-sync/platonus` poller and
+  `workers/reminder-worker` sender for the accepted single-user Platonus
+  integration. Grades and pending notifications are stored in Supabase.
 - Vercel: `apps/web` Next.js dashboard.
 - Telegram hosting surface: `apps/tma` built as static assets, commonly Vercel or another HTTPS static host.
 - Arch Linux: `workers/obsidian-mirror` and a local Obsidian vault.

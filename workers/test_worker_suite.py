@@ -15,6 +15,8 @@ TEST_FILES = (
     ROOT / "monthly-review-worker" / "monthly_review_worker_test.py",
     ROOT / "obsidian-mirror" / "obsidian_mirror_test.py",
     ROOT / "university-sync" / "platonus" / "platonus_sync_test.py",
+    ROOT / "university-sync" / "platonus" / "gradebook_html_test.py",
+    ROOT / "university-sync" / "platonus" / "sanitize_har_test.py",
     ROOT / "university-sync" / "aitu-parser" / "university_scraper_test.py",
 )
 

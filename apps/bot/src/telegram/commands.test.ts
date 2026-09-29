@@ -36,6 +36,7 @@ import type {
 } from "@lifeos/db";
 import { describe, expect, it } from "vitest";
 import { handleTelegramUpdate } from "./commands.js";
+import { harness as assistantHarness } from "../assistant/test-helpers.js";
 import type {
   SendMessageInput,
   TelegramBotRuntime,
@@ -1546,6 +1547,14 @@ function runtime(store = new FakeStore()): TelegramBotRuntime & {
 }
 
 describe("Telegram commands", () => {
+  it("keeps quick finance on its established path with Assistant enabled", async () => {
+    const context = runtime();
+    const assistant = assistantHarness();
+    context.assistant = assistant.brain;
+    await handleTelegramUpdate(update("Такси 2700"), context);
+    expect(context.store.financeTransactions).toHaveLength(1);
+    expect(assistant.audit.begin).not.toHaveBeenCalled();
+  });
   it("returns /log usage when text is missing", async () => {
     const context = runtime();
 

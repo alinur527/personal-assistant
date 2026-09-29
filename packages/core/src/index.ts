@@ -10,3 +10,4 @@ export * from "./parsers.js";
 export * from "./source-events.js";
 export * from "./schedule/index.js";
 export * from "./types.js";
+export * from "./assistant/index.js";

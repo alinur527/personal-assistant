@@ -162,6 +162,8 @@ Start with:
 - `docs/SECURITY.md`
 - `docs/HEALTH_BRIDGE_CONTRACT.md`
 - `docs/OBSIDIAN_SYNC.md`
+- `docs/ASSISTANT_ARCHITECTURE.md` — Assistant Brain, runtime tools, memory,
+  rollout flags, and local migration verification.
 
 ## Status
 

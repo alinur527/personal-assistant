@@ -41,6 +41,7 @@ import {
   type SyncthingConfig,
 } from "./syncthing.js";
 import { pipeline } from "node:stream/promises";
+import type { AssistantBrain } from "./assistant/brain.js";
 
 type TmaSessionState = "unregistered" | "pending" | "active" | "blocked";
 
@@ -83,6 +84,7 @@ interface TmaSessionStatus {
 }
 
 export interface BotServerOptions {
+  assistant?: AssistantBrain;
   startedAt?: Date;
   version?: string;
   config?: Partial<
@@ -138,6 +140,7 @@ interface HealthResponse {
 }
 
 interface ResolvedBotServerOptions {
+  assistant?: AssistantBrain;
   startedAt: Date;
   version: string;
   dependencies: {
@@ -1513,6 +1516,7 @@ async function handleTelegramWebhook(
     }
 
     await handleTelegramUpdate(update as TelegramUpdate, {
+      assistant: options.assistant,
       telegram,
       store: options.store,
       tmaUrl: options.tmaUrl,
@@ -3494,6 +3498,7 @@ async function handleRequest(
 
 export function createBotServer(options: BotServerOptions = {}): Server {
   const resolvedOptions: ResolvedBotServerOptions = {
+    assistant: options.assistant,
     startedAt: options.startedAt ?? new Date(),
     version: options.version ?? "0.0.0",
     dependencies: {

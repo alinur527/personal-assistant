@@ -1,4 +1,8 @@
 import type {
+  AssistantMemoryTable,
+  AssistantActionTable,
+} from "./assistant-tables.js";
+import type {
   HealthMetricSource,
   HealthMetricType,
   HealthMode,
@@ -1639,6 +1643,8 @@ export interface Database {
           sent_at?: string | null;
         }
       >;
+      assistant_memories: AssistantMemoryTable;
+      assistant_actions: AssistantActionTable;
       academic_records: TableDefinition<
         {
           id: string;

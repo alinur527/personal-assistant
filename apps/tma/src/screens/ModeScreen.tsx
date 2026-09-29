@@ -37,7 +37,7 @@ const modeOptions: Array<{ value: LifeMode | "auto"; label: string }> = [
   { value: "recovery_setup", label: "Recovery Setup" },
   { value: "summer_term", label: "Summer Term" },
   { value: "summer", label: "Summer" },
-  { value: "trimester", label: "Trimester" },
+  { value: "semester", label: "Semester" },
   { value: "recovery", label: "Recovery" },
   { value: "project_sprint", label: "Project Sprint" },
   { value: "maintenance", label: "Maintenance" },
@@ -100,8 +100,8 @@ const modeExplanations: Record<
     activates: "2026-08-16 to 2026-08-31, or manual override",
     priorities: ["LifeOS", "Cyber Uyut", "CTF", "fitness", "finance"],
   },
-  trimester: {
-    label: "Trimester",
+  semester: {
+    label: "Semester",
     explanation: "Normal university mode.",
     activates: "Normal academic term, or manual override",
     priorities: ["study", "deadlines", "health", "projects"],

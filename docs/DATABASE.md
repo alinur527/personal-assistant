@@ -25,6 +25,7 @@ Current migration set:
 - `20260523000100_life_modes_phase1_study_courses.sql`
 - `20260524000100_dynamic_sources_mvp.sql`
 - `20260615000100_profile_status_roles.sql`
+- `20260929000100_semester_mode.sql` (renames existing trimester rows to semester)
 
 ## Kernel Tables
 

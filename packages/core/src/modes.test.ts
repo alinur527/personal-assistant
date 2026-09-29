@@ -49,7 +49,7 @@ describe("life mode resolution", () => {
       ],
     });
 
-    expect(result.mode).toBe("trimester");
+    expect(result.mode).toBe("semester");
     expect(result.source).toBe("default");
   });
 
@@ -86,12 +86,12 @@ describe("life mode resolution", () => {
     expect(result.reason).toContain("Summer build");
   });
 
-  it("defaults to trimester", () => {
+  it("defaults to semester", () => {
     expect(
       resolveCurrentMode("user-1", {
         now: "2026-05-21T10:00:00.000Z",
       }).mode,
-    ).toBe("trimester");
+    ).toBe("semester");
   });
 
   it("returns configured labels", () => {
@@ -104,6 +104,7 @@ describe("life mode resolution", () => {
     expect(parseLifeMode("Practice Mode")).toBe("practice");
     expect(parseLifeMode("Recovery / Setup Mode")).toBe("recovery_setup");
     expect(parseLifeMode("summer-term")).toBe("summer_term");
+    expect(parseLifeMode("Trimester Mode")).toBe("semester");
   });
 
   it("resolves the phase 1 summer term season", () => {

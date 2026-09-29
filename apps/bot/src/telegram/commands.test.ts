@@ -140,8 +140,8 @@ class FakeStore implements LifeOSStore {
   ];
   healthSummary: TmaHealthSummary = {
     date: "2026-05-18",
-    lifeMode: "trimester",
-    lifeModeLabel: "Trimester Mode",
+    lifeMode: "semester",
+    lifeModeLabel: "Semester Mode",
     recommendation: "Balance study blocks with health and finance basics.",
     recoveryMode: "baseline",
     dataCompletenessScore: 50,
@@ -594,8 +594,8 @@ class FakeStore implements LifeOSStore {
   async resolveCurrentMode(): Promise<LifeModeResolution> {
     return {
       userId: "user-1",
-      mode: "trimester",
-      label: "Trimester Mode",
+      mode: "semester",
+      label: "Semester Mode",
       source: "default",
       reason:
         "No manual override, recovery signal, season, or sprint is active.",
@@ -710,9 +710,9 @@ class FakeStore implements LifeOSStore {
     return {
       displayName: "User",
       localDate: "May 18, 2026",
-      mode: "trimester",
-      modeLabel: "Trimester Mode",
-      modeReason: "Trimester Mode is active from default.",
+      mode: "semester",
+      modeLabel: "Semester Mode",
+      modeReason: "Semester Mode is active from default.",
       recoveryMode: "baseline",
       focusScore: 80,
       activeWorkout: null,
@@ -738,9 +738,9 @@ class FakeStore implements LifeOSStore {
       score: 80,
       band: "high",
       mode: "baseline",
-      lifeMode: "trimester",
-      lifeModeLabel: "Trimester Mode",
-      lifeModeReason: "Trimester Mode is active from default.",
+      lifeMode: "semester",
+      lifeModeLabel: "Semester Mode",
+      lifeModeReason: "Semester Mode is active from default.",
       reasons: [],
       nextBestAction: "Deep work",
       openTaskCount: 2,

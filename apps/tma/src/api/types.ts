@@ -6,7 +6,7 @@ export type LifeMode =
   | "recovery_setup"
   | "summer_term"
   | "summer"
-  | "trimester"
+  | "semester"
   | "recovery"
   | "project_sprint"
   | "maintenance";

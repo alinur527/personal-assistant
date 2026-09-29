@@ -2890,7 +2890,7 @@ function healthRecommendationForMode(mode: LifeMode): string {
       return "Keep health anchors stable while the sprint gets priority.";
     case "maintenance":
       return "Maintain sleep, food, and money routines before adding load.";
-    case "trimester":
+    case "semester":
       return "Balance study blocks with health and finance basics.";
   }
 }
@@ -4128,7 +4128,7 @@ export class SupabaseLifeOSStore implements LifeOSStore {
       template: input.manualPlan?.length
         ? "telegram_manual_parsed"
         : workoutTemplateForMode(input.lifeMode),
-      lifeMode: input.lifeMode ?? "trimester",
+      lifeMode: input.lifeMode ?? "semester",
     };
 
     if (input.manualPlan?.length) {

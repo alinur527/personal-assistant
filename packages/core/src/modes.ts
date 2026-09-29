@@ -6,7 +6,7 @@ export const LIFE_MODES: readonly LifeMode[] = [
   "recovery_setup",
   "summer_term",
   "summer",
-  "trimester",
+  "semester",
   "recovery",
   "project_sprint",
   "maintenance",
@@ -18,7 +18,7 @@ export const LIFE_MODE_LABELS: Record<LifeMode, string> = {
   recovery_setup: "Recovery / Setup Mode",
   summer_term: "Summer Term Mode",
   summer: "Summer Mode",
-  trimester: "Trimester Mode",
+  semester: "Semester Mode",
   recovery: "Recovery Mode",
   project_sprint: "Project Sprint",
   maintenance: "Maintenance Mode",
@@ -32,6 +32,8 @@ const LIFE_MODE_ALIASES: Record<string, LifeMode> = {
   recovery_setup_mode: "recovery_setup",
   summer_course: "summer_term",
   summer_term_mode: "summer_term",
+  trimester: "semester",
+  trimester_mode: "semester",
 };
 
 export const DEFAULT_LIFE_MODE_PRIORITY_WEIGHTS: Record<
@@ -86,7 +88,7 @@ export const DEFAULT_LIFE_MODE_PRIORITY_WEIGHTS: Record<
     heavy_fitness: -100,
     projects: 10,
   },
-  trimester: {
+  semester: {
     study: 70,
     health: 40,
     finance: 30,
@@ -304,7 +306,7 @@ export function resolveCurrentMode(
     });
   }
 
-  const defaultMode = input.defaultMode ?? "trimester";
+  const defaultMode = input.defaultMode ?? "semester";
 
   return buildResolution({
     userId,

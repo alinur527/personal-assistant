@@ -8,10 +8,13 @@ and dashboard surfaces.
 
 - `exam_war` - Exam War Mode
 - `summer` - Summer Mode
-- `trimester` - Trimester Mode
+- `semester` - Semester Mode
 - `recovery` - Recovery Mode
 - `project_sprint` - Project Sprint
 - `maintenance` - Maintenance Mode
+
+Old `trimester` command input remains an alias for `semester`. Migration
+`20260929000100_semester_mode.sql` updates stored modes and seasons.
 
 ## Automatic Resolver
 
@@ -22,7 +25,7 @@ Mode resolution runs in this order:
    `health_daily.recovery_mode = 'recovery'`.
 3. Active `life_seasons` row for the current date.
 4. Active project sprint configuration.
-5. Default mode: `trimester`.
+5. Default mode: `semester`.
 
 The resolver returns the mode, label, source, reason, optional expiry, and the
 priority weights used by focus scoring.

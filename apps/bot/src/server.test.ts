@@ -198,7 +198,7 @@ function workoutSummary(overrides: Partial<CurrentWorkoutSummary> = {}) {
 }
 
 export function tmaStore(events: string[] = []): LifeOSStore {
-  let mode: LifeMode = "trimester";
+  let mode: LifeMode = "semester";
   let reminderMode: "chill" | "normal" | "duolingo" | "war" = "normal";
   let reminders: ReminderRecord[] = [];
   let monthlyReview: Awaited<
@@ -274,10 +274,10 @@ export function tmaStore(events: string[] = []): LifeOSStore {
   const modeResolution = (): LifeModeResolution => ({
     userId: "user-1",
     mode,
-    label: mode === "summer" ? "Summer Mode" : "Trimester Mode",
-    source: mode === "trimester" ? "default" : "manual",
+    label: mode === "summer" ? "Summer Mode" : "Semester Mode",
+    source: mode === "semester" ? "default" : "manual",
     reason:
-      mode === "trimester"
+      mode === "semester"
         ? "No manual override, recovery signal, season, or sprint is active."
         : "TMA override until cleared.",
     activeUntil: null,
@@ -402,7 +402,7 @@ export function tmaStore(events: string[] = []): LifeOSStore {
     },
     async clearManualMode() {
       events.push("clearManualMode");
-      mode = "trimester";
+      mode = "semester";
       return modeResolution();
     },
     async setManualLifeMode(input) {
@@ -412,7 +412,7 @@ export function tmaStore(events: string[] = []): LifeOSStore {
     },
     async clearManualLifeMode() {
       events.push("clearManualLifeMode");
-      mode = "trimester";
+      mode = "semester";
       return modeResolution();
     },
     async listModeAwareFocusItems() {
@@ -471,9 +471,9 @@ export function tmaStore(events: string[] = []): LifeOSStore {
       return {
         displayName: "Dev user",
         localDate: "May 18, 2026",
-        mode: "trimester",
-        modeLabel: "Trimester Mode",
-        modeReason: "Trimester Mode is active from default.",
+        mode: "semester",
+        modeLabel: "Semester Mode",
+        modeReason: "Semester Mode is active from default.",
         recoveryMode: "baseline",
         focusScore: 80,
         activeWorkout: {
@@ -497,8 +497,8 @@ export function tmaStore(events: string[] = []): LifeOSStore {
     async getTmaHealthSummary() {
       return {
         date: "2026-05-17",
-        lifeMode: "trimester",
-        lifeModeLabel: "Trimester Mode",
+        lifeMode: "semester",
+        lifeModeLabel: "Semester Mode",
         recommendation: "Balance study blocks with health and finance basics.",
         recoveryMode: "baseline",
         dataCompletenessScore: 50,
@@ -543,9 +543,9 @@ export function tmaStore(events: string[] = []): LifeOSStore {
         score: 80,
         band: "high",
         mode: "baseline",
-        lifeMode: "trimester",
-        lifeModeLabel: "Trimester Mode",
-        lifeModeReason: "Trimester Mode is active from default.",
+        lifeMode: "semester",
+        lifeModeLabel: "Semester Mode",
+        lifeModeReason: "Semester Mode is active from default.",
         reasons: [],
         nextBestAction: "Deep work",
         openTaskCount: 2,
@@ -1317,8 +1317,8 @@ function webhookCommandStore(overrides: Partial<LifeOSStore> = {}): {
     async resolveCurrentMode() {
       return {
         userId: "user-1",
-        mode: "trimester" as const,
-        label: "Trimester Mode",
+        mode: "semester" as const,
+        label: "Semester Mode",
         source: "default" as const,
         reason:
           "No manual override, recovery signal, season, or sprint is active.",
@@ -1657,7 +1657,7 @@ describe("bot server", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(sent.at(-1)?.text).toContain("Mode: <b>Trimester Mode</b>");
+    expect(sent.at(-1)?.text).toContain("Mode: <b>Semester Mode</b>");
   });
 
   it("keeps /status replying through the Telegram webhook", async () => {
